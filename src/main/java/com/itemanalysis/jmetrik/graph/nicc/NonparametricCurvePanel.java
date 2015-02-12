@@ -30,6 +30,8 @@ import org.jfree.chart.title.LegendTitle;
 import org.jfree.data.xy.XYDataset;
 import org.jfree.data.xy.XYSeriesCollection;
 import org.jfree.ui.RectangleInsets;
+import org.json.simple.JSONObject;
+import org.json.simple.JSONArray;
 
 import javax.swing.*;
 import javax.swing.filechooser.FileFilter;
@@ -71,10 +73,33 @@ public class NonparametricCurvePanel extends GraphPanel {
     public void savePlots(String path)throws IOException{
         File dir = new File(path);
         if(!dir.exists()) dir.mkdirs();
+
         for(String s : charts.keySet()){
             JFreeChart c = charts.get(s);
             ChartUtilities.saveChartAsJPEG(new File(dir.getAbsolutePath()+"/"+s+".jpg"), c, width, height);
         }
+
+        JSONObject jsonRoot = new JSONObject();
+        for(String chartName : charts.keySet()){
+            JFreeChart c = charts.get(chartName);
+            XYPlot plot = (XYPlot)c.getPlot();
+            XYDataset data = plot.getDataset();
+            JSONObject jsonChart = new JSONObject();
+            for (int s = 0; s < data.getSeriesCount(); ++s) {
+                JSONArray series = new JSONArray();
+                for (int i = 0; i < data.getItemCount(s); ++i) {
+                    JSONArray point = new JSONArray();
+                    point.add(data.getXValue(s, i));
+                    point.add(data.getYValue(s, i));
+                    series.add(point);
+                }
+                jsonChart.put(data.getSeriesKey(s), series);
+            }
+            jsonRoot.put(chartName, jsonChart);
+        }
+        FileWriter dataWriter = new FileWriter(dir.getAbsolutePath()+"/data.json");
+        jsonRoot.writeJSONString(dataWriter);
+        dataWriter.close();
     }
 
     private void processCommand(){
